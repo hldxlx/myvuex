@@ -1,4 +1,7 @@
 # myvuex
+```
+   1 使用vuex的getters mutations actions
+```
 
 ## Project setup
 ```
