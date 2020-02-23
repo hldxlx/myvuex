@@ -4,9 +4,9 @@
     <!--如果点击那个按钮，它就会触发状态的更新，那当前视图就会更新-->
     它{{$store.state.age}}
 
-    <!--我{{$store.getters.myAge}}-->
-    <!--<button @click="syncChange()">点我同步更改</button>-->
-    <!--<button @click="asyncChange()">点我异步更改</button>-->
+    我{{$store.getters.myAge}}
+    <button @click="syncChange()">点我同步更改</button>
+    <button @click="asyncChange()">点我异步更改</button>
   </div>
 </template>
 
