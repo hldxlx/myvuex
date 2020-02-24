@@ -9,7 +9,8 @@
     <button @click="asyncChange()">点我异步更改</button>
     <!--{{$store.state.a.age}}-->
     <!--{{$store.state.b.age}}-->
-    <!--{{$store.state.b.c.age}}-->
+    {{$store.state.b.c.age}}
+    {{$store.state.d.age}}
   </div>
 </template>
 
@@ -18,6 +19,9 @@
 
 export default {
     name: 'app',
+    mounted(){
+        console.log(this.$store.state,'666');
+    },
     beforeCreate(){
         console.log('组件');
     },

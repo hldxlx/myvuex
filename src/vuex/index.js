@@ -39,6 +39,53 @@ class ModuleCollection{
         }
     }
 }
+function installModule(store,rootState,path,rawModule) {//rawModule是有 _raw _children state
+    let getters = rawModule._raw.getters;
+    //没有安装我们的状态 我需要把子模块的状态定义到rootState上
+    if(path.length > 0){//当前的path如果长度大于0 说明有子模块了
+        //vue的响应式原理 不能增加不存在的属性
+        let parentState = path.slice(0,-1).reduce((root,current)=>{//[b,c]
+            return rootState[current]
+        },rootState);//从根的状态 rootState开始找
+
+
+
+        //给这个根状态定义当前模块的名字是path的最后一项
+        Vue.set(parentState,path[path.length-1],rawModule.state)//递归地给当前状态赋值
+    }
+    if(getters){//定义getters
+        forEach(getters,(getterName,value)=>{
+            if(!store.getters[getterName]){
+                Object.defineProperty(store.getters,getterName,{
+                    get:()=>{
+                        return value(rawModule.state);
+                    }
+                })
+            }
+        })
+    }
+    let mutations = rawModule._raw.mutations;//取用户的mutations
+    if(mutations){
+        forEach(mutations,(mutationName,value)=>{//[fn,fn,fn] 订阅
+            let arr = store.mutations[mutationName] || (store.mutations[mutationName] = []);
+            arr.push((payload)=>{
+                value(rawModule.state,payload);
+            })
+        })
+    }
+    let actions = rawModule._raw.actions;//取用户的action
+    if(actions){
+        forEach(actions,(actionName,value)=>{//[fn,fn,fn] 订阅
+            let arr = store.actions[actionName] || (store.actions[actionName] = []);
+            arr.push((payload)=>{
+                value(store,payload);
+            })
+        })
+    }
+    forEach(rawModule._children,(moduleName,rawModule)=>{//子模块
+        installModule(store,rootState,path.concat(moduleName),rawModule)
+    })
+}
 class Store{// 用户获取的是这个Store类的实例
     constructor(options){
         //options 获取用户new 实例时传入的所有属性
@@ -55,11 +102,20 @@ class Store{// 用户获取的是这个Store类的实例
         this.mutations = {};
         this.actions = {};
 
+        //1 我需要将用户传入的数据进行格式化操作
         this.modules = new ModuleCollection(options);
         console.log(this.modules,'this.modules');
 
+        //递归地安装模块 参数 store/rootState/path/根模块
+        installModule(this,this.state,[],this.modules.root);
+        //this就是store,它上面有那些getters、mutations、actions的属性
+        //this.state 当前的状态
+        //[] 递归 要个数组
+        //要安装哪个模块 就是刚才格式化后 this.modules.root
 
-        //我需要将用户传入的数据进行格式化操作
+
+
+
         //希望最终格式成这个结果 好处:可以一下看到他们谁是父亲 谁是儿子
         //而且可以一目了然知道a、b、根里面有什么状态
         // let root = {
@@ -109,14 +165,23 @@ class Store{// 用户获取的是这个Store类的实例
         // });
     }
     commit = (mutationName,payload)=>{//es7的写法 这样能保证调用commit时this永远指向当前的store的实例
-        this.mutations[mutationName](payload);//发布
+        this.mutations[mutationName].forEach(fn=>fn(payload));//发布
     }
     dispatch = (actionName,payload) =>{//发布的时候会找到对应的action折行
-        this.actions[actionName](payload);
+        this.actions[actionName].forEach(fn=>fn(payload));
     }
     //es6中类的访问器
     get state(){//类的属性访问器 获取实例上的state属性就会折行此方法
         return this.vm.state//这个state就是被监控过的state
+    }
+    //动态注册模块
+    registerModule(moduleName,module){
+        if(!Array.isArray(moduleName)){
+            moduleName = [moduleName]
+        }
+        this.modules.register(moduleName,module);//只是将模块进行格式化而已
+        //?此处有点小问题
+        installModule(this,this.state,[],this.modules.root);
     }
 }
 //官方api
