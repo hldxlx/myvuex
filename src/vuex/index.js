@@ -5,7 +5,40 @@ let forEach = (obj,callback)=>{
         callback(key,obj[key])
     })
 }
+class ModuleCollection{
+    constructor(options){//这个options选项就是用户的选项
+        //深度遍历 将所有的子模块都遍历一遍
+        this.register([],options)//它的递归靠的是一个数组[]；options是用户的根模块
+    }
+    register(path,rootModule){
+        let rawModule = {
+            _raw:rootModule,
+            _children:{},
+            state:rootModule.state
+        }
 
+        if(!this.root){//如果它不是根
+            this.root = rawModule;//就把这个模块作为根模块
+        }else{
+            //不停地找到要定义的模块 将这个模块定义到他的父亲上
+            let parentModule = path.slice(0,-1).reduce((root,current)=>{
+                return root._children[current];
+            },this.root);
+            parentModule._children[path[path.length-1]] = rawModule;
+        }
+        if(rootModule.modules){//如果当前的根模块有孩子
+            //把子模块也注册进去
+            forEach(rootModule.modules,(moduleName,module)=>{
+                //将a模块进行注册 传入的参数是  [a],a模块的定义
+                //将b模块进行注册 传入的参数是  [b],b模块的定义
+
+                //将c模块进行注册 传入的参数是  [b,c],c模块的定义
+                this.register(path.concat(moduleName),module);//把当前的名字拼到path里面去
+            })
+
+        }
+    }
+}
 class Store{// 用户获取的是这个Store类的实例
     constructor(options){
         //options 获取用户new 实例时传入的所有属性
@@ -17,33 +50,63 @@ class Store{// 用户获取的是这个Store类的实例
             }
         });
         let getters = options.getters;//获取用户传入的getters
+        console.log(getters);
         this.getters = {};  //这个是store里的getters
-        //遍历对象的功能非常地常用
-        forEach(getters,(getterName,value)=>{
-            //传入是一个函数，但是想把它变成属性
-            //把用户传入的属性定义到我们当前的Store上，而且是通过Object.defineProperty来实现
-            Object.defineProperty(this.getters,getterName,{
-                get:()=>{
-                    return value(this.state)
-                }
-            })
-        });
-        //我需要将用户定义的mutation 放到store上 先订阅 (将函数订阅到一个数组中) 才能发布（让数组的函数依次折行）
-        let mutations = options.mutations;//用户传进来时先订阅好，等会commit我就让它折行
-        //订阅的过程一般都会用一个数组来保存所有的mutations
-        this.mutations = {};//用户传进来的数据先把它定位到这个对象里面；等会一commit就找到对应的方法让它折行
-        forEach(mutations,(mutationName,value)=>{
-            this.mutations[mutationName] = (payload) =>{//订阅
-                value(this.state,payload);
-            }
-        });
-        let actions = options.actions;
+        this.mutations = {};
         this.actions = {};
-        forEach(actions,(actionName,value)=>{// 最后我们会做一个监控 看一下是不是异步方法都在action中折行的 不是在mutation中折行的
-            this.actions[actionName] = (payload) =>{
-                value(this,payload);//this为当前的store  调用action action会帮我们调用mutation
-            }
-        });
+
+        this.modules = new ModuleCollection(options);
+        console.log(this.modules,'this.modules');
+
+
+        //我需要将用户传入的数据进行格式化操作
+        //希望最终格式成这个结果 好处:可以一下看到他们谁是父亲 谁是儿子
+        //而且可以一目了然知道a、b、根里面有什么状态
+        // let root = {
+        //     _raw:rootModule,
+        //     state:rootModule.state,
+        //     _children:{a:{
+        //         _raw:aModule,
+        //         _children:{},
+        //         state:aModule.state,
+        //     },b:{
+        //         _raw:bModule,
+        //         _children:{
+        //             c:{ }
+        //         },
+        //         state:bModule.state,
+        //     }}
+        // }
+
+        //--------------------
+
+        //遍历对象的功能非常地常用
+        // forEach(getters,(getterName,value)=>{//只能注册第一层
+        //     //传入是一个函数，但是想把它变成属性
+        //     //把用户传入的属性定义到我们当前的Store上，而且是通过Object.defineProperty来实现
+        //     Object.defineProperty(this.getters,getterName,{
+        //         get:()=>{
+        //             return value(this.state)
+        //         }
+        //     })
+        // });
+        //我需要将用户定义的mutation 放到store上 先订阅 (将函数订阅到一个数组中) 才能发布（让数组的函数依次折行）
+        //let mutations = options.mutations;//用户传进来时先订阅好，等会commit我就让它折行
+        //订阅的过程一般都会用一个数组来保存所有的mutations
+        //this.mutations = {};//用户传进来的数据先把它定位到这个对象里面；等会一commit就找到对应的方法让它折行
+        // forEach(mutations,(mutationName,value)=>{//只能注册第一层
+        //     this.mutations[mutationName] = (payload) =>{//订阅
+        //         value(this.state,payload);
+        //     }
+        // });
+        //let actions = options.actions;
+        //this.actions = {};
+        //只能注册第一层
+        // forEach(actions,(actionName,value)=>{// 最后我们会做一个监控 看一下是不是异步方法都在action中折行的 不是在mutation中折行的
+        //     this.actions[actionName] = (payload) =>{
+        //         value(this,payload);//this为当前的store  调用action action会帮我们调用mutation
+        //     }
+        // });
     }
     commit = (mutationName,payload)=>{//es7的写法 这样能保证调用commit时this永远指向当前的store的实例
         this.mutations[mutationName](payload);//发布

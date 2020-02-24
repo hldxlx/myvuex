@@ -7,6 +7,9 @@
     我{{$store.getters.myAge}}
     <button @click="syncChange()">点我同步更改</button>
     <button @click="asyncChange()">点我异步更改</button>
+    <!--{{$store.state.a.age}}-->
+    <!--{{$store.state.b.age}}-->
+    <!--{{$store.state.b.c.age}}-->
   </div>
 </template>
 

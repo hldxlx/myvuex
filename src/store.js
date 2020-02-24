@@ -5,6 +5,40 @@ import Vuex from './vuex'
 Vue.use(Vuex)//默认会折行当前插件（即Vuex）的install方法
 //通过 Vuex中的一个属性 Store 创建一个store的实例
 export default new Vuex.Store({
+    modules:{
+        a:{//模块名不能和状态名一致
+            state:{
+                age:'a10'
+            },
+            mutations:{
+                syncChange(){
+                    console.log('aa-syncChange');
+                }
+            }
+        },
+        b:{
+            state:{
+                age:'b10'
+            },
+            mutations:{
+                syncChange(){
+                    console.log('bb-syncChange');
+                }
+            },
+            modules:{
+                c:{
+                    state:{
+                        age:'c10'
+                    },
+                    mutations:{
+                        syncChange(){
+                            console.log('cc-syncChange');
+                        }
+                    }
+                }
+            }
+        }
+    },
     state:{//单一数据源  以前的data
       age:10
     },
